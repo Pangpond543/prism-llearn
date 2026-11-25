@@ -1,0 +1,13 @@
+node_modules/
+target/
+app/src-tauri/target/
+app/src-tauri/gen/
+dist/
+*.old.exe
+*.old
+# built program files live in app/bin locally (the user's shortcut opens them) — never committed
+app/bin/*.exe
+app/bin/*.dll
+.claude/
+# tools + models (~3 GB) live only on this PC
+app/bin/runtime/

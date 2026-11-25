@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="referrer" content="strict-origin-when-cross-origin">
+<title>Prism LLearn</title>
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/llearn.css">
+</head>
+<body>
+<canvas id="bg"></canvas>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <filter id="refract" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.006 0.011" numOctaves="2" seed="11" result="noise"/>
+      <feGaussianBlur in="SourceGraphic" stdDeviation="7" result="blur"/>
+      <feDisplacementMap in="blur" in2="noise" scale="70" xChannelSelector="R" yChannelSelector="G"/>
+    </filter>
+  </defs>
+</svg>
+
+<div id="app">
+  <!-- ───────────── title bar (Prism suite shell) ───────────── -->
+  <header id="titlebar" class="glass refract">
+    <div class="brand tb-drag" data-tauri-drag-region>
+      <div class="prism-logo" data-tauri-drag-region><i></i><i></i><i></i><b class="lg"><svg viewBox="18 18 64 64" aria-hidden="true"><rect x="23" y="26" width="54" height="40" rx="13" fill="#fff"/><path d="M34 62 L30 76 L47 64 Z" fill="#fff"/><path d="M39.5 57 L50 34 L60.5 57 M43.6 49 H56.4" fill="none" stroke="var(--lg-deep)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></b></div>
+      <span class="brand-name" data-tauri-drag-region>Prism LLearn</span>
+      <span class="brand-sig" data-tauri-drag-region title="by 543">by 543</span>
+    </div>
+    <div id="crumbs" class="crumbs" data-tauri-drag-region></div>
+    <div class="tb-drag tb-fill" data-tauri-drag-region></div>
+    <div class="tb-actions">
+      <button class="tb-streak" id="tb-streak" title="เรียนติดต่อกัน (วัน)"><span data-icon="flame"></span><b>0</b></button>
+      <div class="lang-switch" id="lang-switch" title="ภาษา / Language"><i></i><button data-lang="th">TH</button><button data-lang="en">EN</button></div>
+      <button class="icon-btn" id="btn-theme" title="หน้าตาโปรแกรม: สว่าง / มืด · แก้ว / คลาสสิก"><span data-icon="moon"></span></button>
+      <button class="icon-btn" id="btn-info" title="เกี่ยวกับ Prism LLearn"><span data-icon="info"></span></button>
+      <div class="win-btns">
+        <button id="win-min" title="ย่อ"><span data-icon="min"></span></button>
+        <button id="win-max" title="ขยาย"><span data-icon="max"></span></button>
+        <button id="win-close" class="danger" title="ปิด"><span data-icon="x"></span></button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ───────────── dock ───────────── -->
+  <nav id="dock-wrap"><div id="dock" class="glass refract">
+    <button class="dock-btn active" data-view="home"><span data-icon="home"></span><em>หน้าแรก</em></button>
+    <button class="dock-btn" data-view="learn"><span data-icon="book"></span><em>เรียน</em></button>
+    <button class="dock-btn" data-view="review"><span data-icon="cards"></span><em>ทบทวน</em><b class="dock-badge" id="rv-badge"></b></button>
+    <button class="dock-btn" data-view="words"><span data-icon="lang"></span><em>คลังคำ</em></button>
+    <button class="dock-btn" data-view="keys"><span data-icon="keyboard"></span><em>คีย์ลัด (F1)</em></button>
+    <i class="dock-sep"></i>
+    <button class="dock-btn" id="dock-open"><span data-icon="film"></span><em>เปิดวิดีโอในเครื่อง (Ctrl+O)</em></button>
+    <button class="dock-btn" id="dock-live"><span data-icon="ear"></span><em>ซับสดจากเสียงในคอม (Ctrl+Shift+L)</em></button>
+  </div></nav>
+
+  <main id="stage">
+    <!-- ───────────── home ───────────── -->
+    <section id="view-home" class="view scroll-view active"><div class="page">
+      <div class="add glass card">
+        <div class="add-ico"><span data-icon="link"></span></div>
+        <input id="add-in" type="text" spellcheck="false" autocomplete="off" placeholder="วางลิงก์ YouTube / Bilibili / TikTok / เว็บ หรือข้อความภาษาอังกฤษ / จีน แล้วกด Enter">
+        <button class="pill-btn primary" id="add-go"><span data-icon="play"></span><span>เริ่มเรียน</span></button>
+        <button class="pill-btn" id="add-file" title="เปิดวิดีโอ + ซับจากเครื่อง (Ctrl+O)"><span data-icon="film"></span><span>ไฟล์ในเครื่อง</span></button>
+      </div>
+      <div class="home-top" id="home-top"></div>
+      <div class="aiq glass card hidden" id="aiq"></div>
+      <div class="heat glass card" id="heat"></div>
+      <div class="home-cols">
+        <div><div class="sec-head"><h3>บทเรียนล่าสุด</h3></div><div class="recent" id="recent"></div></div>
+        <aside class="status glass card" id="status"></aside>
+      </div>
+    </div></section>
+
+    <!-- ───────────── learn ───────────── -->
+    <section id="view-learn" class="view">
+      <div class="lr-empty" id="lr-empty"><div class="lr-empty-in">
+        <div class="lr-empty-art"><div class="prism-logo big"><i></i><i></i><i></i><b class="lg"><svg viewBox="18 18 64 64" aria-hidden="true"><rect x="23" y="26" width="54" height="40" rx="13" fill="#fff"/><path d="M34 62 L30 76 L47 64 Z" fill="#fff"/><path d="M39.5 57 L50 34 L60.5 57 M43.6 49 H56.4" fill="none" stroke="var(--lg-deep)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></b></div></div>
+        <h2>วันนี้อยากเรียนจากอะไรดี?</h2>
+        <p class="muted">วางลิงก์ YouTube, Bilibili, TikTok หรือเว็บวิดีโออื่น, ลิงก์บทความ, ข้อความ หรือลากไฟล์วิดีโอมาวางที่นี่ — ไม่มีซับก็ได้ AI ในเครื่องทำให้</p>
+        <div class="add glass card"><div class="add-ico"><span data-icon="link"></span></div><input id="add-in2" type="text" spellcheck="false" autocomplete="off" placeholder="https://www.youtube.com/watch?v=…"><button class="pill-btn primary" id="add-go2"><span data-icon="play"></span><span>เริ่มเรียน</span></button></div>
+        <div class="lr-empty-btns"><button class="pill-btn" id="lr-file"><span data-icon="film"></span><span>เปิดวิดีโอในเครื่อง</span></button><button class="pill-btn" id="lr-paste"><span data-icon="doc"></span><span>วางข้อความยาว</span></button></div>
+        <div class="recent mini" id="recent2"></div>
+      </div></div>
+      <div class="lr hidden" id="lr">
+        <div class="lr-left">
+          <div class="lr-media glass" id="lr-media"><div class="lr-video" id="lr-video"></div></div>
+          <div class="lr-cap glass" id="lr-cap"></div>
+          <div class="lr-ctrl glass" id="lr-ctrl"></div>
+        </div>
+        <div class="lr-right glass">
+          <div class="lr-head">
+            <div class="lr-titles"><b id="lr-title"></b><div class="lr-sub muted" id="lr-sub"></div></div>
+            <button class="icon-btn" id="lr-close" title="ปิดบทเรียน"><span data-icon="x"></span></button>
+          </div>
+          <div class="lr-stats" id="lr-stats"></div>
+          <div class="lr-lines" id="lr-lines"></div>
+        </div>
+      </div>
+      <div class="lr-busy hidden" id="lr-busy"></div>
+    </section>
+
+    <!-- ───────────── review ───────────── -->
+    <section id="view-review" class="view scroll-view"><div class="page rv-page"><div id="rv"></div></div></section>
+
+    <!-- ───────────── words ───────────── -->
+    <section id="view-words" class="view scroll-view"><div class="page">
+      <div class="page-head"><div><h2>คลังคำ</h2><p class="muted" id="wl-count"></p></div>
+        <div class="head-tools">
+          <label class="field"><span data-icon="search"></span><input id="wl-q" type="text" spellcheck="false" placeholder="ค้นหาคำ / ความหมาย"></label>
+          <button class="pill-btn" id="wl-csv" title="ไฟล์ CSV เปิดด้วย Excel / Google Sheets ได้"><span data-icon="download"></span><span>CSV</span></button>
+          <button class="pill-btn" id="wl-anki" title="ไฟล์สำหรับนำเข้า Anki (File > Import)"><span data-icon="download"></span><span>Anki</span></button>
+        </div></div>
+      <div class="wl-bar">
+        <div class="seg" id="wl-lang"><button data-l="all">ทุกภาษา</button><button data-l="en">อังกฤษ</button><button data-l="zh">จีน</button></div>
+        <div class="seg" id="wl-filter"><button data-f="all">บัตรคำทั้งหมด</button><button data-f="due">ถึงรอบ</button><button data-f="new">ยังไม่ทวน</button><button data-f="today">เพิ่มวันนี้</button><button data-f="known">รู้แล้ว</button><button data-f="skip">ข้าม</button></div>
+      </div>
+      <div class="wl" id="wl"></div>
+    </div></section>
+
+    <!-- ───────────── shortcuts ───────────── -->
+    <section id="view-keys" class="view scroll-view"><div class="page">
+      <div class="page-head"><div><h2>คีย์ลัด</h2><p class="muted">ใช้คีย์บอร์ดเรียนได้เร็วขึ้นมาก</p></div></div>
+      <div class="grid g-2" id="keys"></div>
+    </div></section>
+  </main>
+</div>
+
+<div id="wordpop" class="glass wordpop hidden"></div>
+<div id="tooltip" class="glass tip hidden"></div>
+<div id="ctx" class="glass ctx hidden"></div>
+<div id="theme-pop" class="glass ctx theme-pop hidden">
+  <div class="ctx-head">ธีม</div>
+  <div class="seg"><button data-mode="light"><span data-icon="day"></span><span>สว่าง</span></button><button data-mode="dark"><span data-icon="moon"></span><span>มืด</span></button></div>
+  <div class="ctx-head">สไตล์</div>
+  <div class="seg"><button data-look="glass"><span data-icon="sparkle"></span><span>แก้ว</span></button><button data-look="classic"><span data-icon="plain"></span><span>คลาสสิก</span></button></div>
+  <p class="theme-note">คลาสสิก: พื้นเรียบ ไม่มีแสงหักเหหรือแอนิเมชัน ใช้เครื่องน้อยกว่า</p>
+</div>
+<div id="toasts"></div>
+<div id="modal" class="overlay hidden"></div>
+
+<script src="vendor/Readability.js"></script>
+<script type="module" src="js/app.js"></script>
+</body>
+</html>

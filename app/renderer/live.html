@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="th" class="live">
+<head>
+<meta charset="utf-8">
+<title>Prism LLearn — Live</title>
+<link rel="stylesheet" href="css/fonts.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/llearn.css">
+<link rel="stylesheet" href="css/live.css">
+</head>
+<body>
+<div class="lv glass" id="lv">
+  <div class="lv-bar" data-tauri-drag-region>
+    <div class="prism-logo small" data-tauri-drag-region><i></i><i></i><i></i><b class="lg"><svg viewBox="18 18 64 64" aria-hidden="true"><rect x="23" y="26" width="54" height="40" rx="13" fill="#fff"/><path d="M34 62 L30 76 L47 64 Z" fill="#fff"/><path d="M39.5 57 L50 34 L60.5 57 M43.6 49 H56.4" fill="none" stroke="var(--lg-deep)" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/></svg></b></div>
+    <b class="lv-name" data-tauri-drag-region>ซับสด</b>
+    <span class="lv-state" id="lv-state" data-tauri-drag-region></span>
+    <i class="lv-meter" data-tauri-drag-region><i id="lv-level"></i></i>
+    <span class="lv-fill" data-tauri-drag-region></span>
+    <div class="seg lv-seg" id="lv-lang"><button data-v="auto">อัตโนมัติ</button><button data-v="en">EN</button><button data-v="zh">中文</button></div>
+    <button class="lv-tog" id="lv-th" title="แสดงคำแปลไทย"><b>ไทย</b></button>
+    <button class="icon-btn" id="lv-small" title="ตัวอักษรเล็กลง"><span data-icon="minus"></span></button>
+    <button class="icon-btn" id="lv-big" title="ตัวอักษรใหญ่ขึ้น"><span data-icon="plus"></span></button>
+    <button class="icon-btn" id="lv-op" title="ความทึบของพื้นหลัง"><span data-icon="eye"></span></button>
+    <button class="icon-btn" id="lv-pause" title="หยุด / ฟังต่อ"><span data-icon="pause"></span></button>
+    <button class="icon-btn" id="lv-x" title="ปิดซับสด"><span data-icon="x"></span></button>
+  </div>
+  <div class="lv-lines" id="lv-lines"><div class="lv-hint" id="lv-hint">เปิดวิดีโอ เพลง หรือไลฟ์อะไรก็ได้ในคอม — ซับภาษาอังกฤษ / จีนจะขึ้นที่นี่ คลิกคำเพื่อดูความหมาย</div></div>
+  <div class="lv-card glass hidden" id="lv-card"></div>
+</div>
+<script type="module" src="js/live.js"></script>
+</body>
+</html>
