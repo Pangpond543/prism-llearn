@@ -25,9 +25,10 @@ export async function loadState() {
   if (raw) {
     try {
       const d = JSON.parse(raw);
+      if (!d || typeof d !== 'object' || Array.isArray(d)) throw new Error('not an object');
       const f = fresh();
       S = { ...f, ...d, set: { ...f.set, ...(d.set || {}) }, goal: { ...f.goal, ...(d.goal || {}) }, ui: { ...f.ui, ...(d.ui || {}) } };
-    } catch { toast(T`อ่านข้อมูลที่บันทึกไว้ไม่ได้ — เริ่มใหม่ (ไฟล์เดิมยังอยู่เป็น .bak)`, { kind: 'err' }); }
+    } catch { toast(T`อ่านข้อมูลที่บันทึกไว้ไม่ได้ — เริ่มใหม่ (ไฟล์เดิมเก็บไว้เป็น state.broken.json)`, { kind: 'err' }); }
   }
   return S;
 }
@@ -42,7 +43,9 @@ export async function saveNow() {
   if (native) ok = await api.invoke('db:save', text);
   else { try { localStorage.setItem(KEY, text); } catch { ok = false; } }
   saving = false;
-  if (!ok) toast(T`บันทึกข้อมูลไม่สำเร็จ`, { kind: 'err' });
+  // once per problem, not every autosave (a full disk would show it every 5 s)
+  if (!ok && !saveNow.warned) { saveNow.warned = true; toast(T`บันทึกข้อมูลไม่สำเร็จ — ดิสก์อาจเต็ม`, { kind: 'err' }); }
+  if (ok) saveNow.warned = false;
   if (again) { again = false; saveNow(); }
 }
 addEventListener('beforeunload', () => { if (!native) try { localStorage.setItem(KEY, JSON.stringify(S)); } catch { /* */ } });

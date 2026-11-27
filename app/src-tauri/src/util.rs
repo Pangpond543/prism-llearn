@@ -123,11 +123,41 @@ pub fn hash(s: &str) -> String {
     format!("{h:016x}")
 }
 /// Write via a temp file + rename, keeping the previous copy as .bak (a crash mid-write never loses the cards).
+/// A broken file (cut short by a full disk / power loss) never replaces a good .bak: for .json files the old copy
+/// becomes the .bak only when it still reads as JSON.
 pub fn write_safe(p: &std::path::Path, data: &[u8]) -> bool {
     let tmp = p.with_extension("tmp");
-    if std::fs::write(&tmp, data).is_err() { return false; }
-    if p.exists() { let _ = std::fs::copy(p, p.with_extension("bak")); }
+    if std::fs::write(&tmp, data).is_err() { let _ = std::fs::remove_file(&tmp); return false; }
+    if p.exists() {
+        let is_json = p.extension().map_or(false, |x| x == "json");
+        let good = !is_json || std::fs::read(p).ok().map_or(false, |b| serde_json::from_slice::<serde_json::Value>(&b).is_ok());
+        if good { let _ = std::fs::copy(p, p.with_extension("bak")); }
+    }
     std::fs::rename(&tmp, p).is_ok()
+}
+/// Read a JSON file, or its .bak when the file is missing / broken. A broken file is kept once as <name>.broken.json
+/// (before the next save replaces it) so nothing is thrown away.
+pub fn read_json_or_bak(p: &std::path::Path) -> Option<String> {
+    let ok = |s: &String| serde_json::from_str::<serde_json::Value>(s).map_or(false, |v| v.is_object());
+    match std::fs::read_to_string(p) {
+        Ok(s) if ok(&s) => return Some(s),
+        Ok(_) | Err(_) if p.exists() => {
+            let keep = p.with_extension("broken.json");
+            if !keep.exists() { let _ = std::fs::copy(p, &keep); }
+            log(&format!("{} broken — using the .bak (copy kept as {})", p.display(), keep.display()));
+        }
+        _ => {}
+    }
+    std::fs::read_to_string(p.with_extension("bak")).ok().filter(ok)
+}
+/// Free bytes on the drive that holds `p` (0 when unknown).
+pub fn free_space(p: &std::path::Path) -> u64 {
+    use std::os::windows::ffi::OsStrExt;
+    let root: PathBuf = p.components().take(1).collect::<PathBuf>().join("\\");
+    let w: Vec<u16> = root.as_os_str().encode_wide().chain(Some(0)).collect();
+    let mut free = 0u64;
+    unsafe { let _ = windows::Win32::Storage::FileSystem::GetDiskFreeSpaceExW(windows::core::PCWSTR(w.as_ptr()), Some(&mut free), None, None); }
+    free
 }
 
 /// yt-dlp progress line "<percent>|<downloaded bytes>|<total or estimate>" → 0..1 (sites like Bilibili give no percent)

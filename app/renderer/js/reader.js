@@ -47,7 +47,7 @@ export function isVideoSite(u) {
   return /\.(mp4|m4v|webm|mov|mkv|m3u8|mp3|m4a|aac|ogg|wav)$/i.test(path);
 }
 function whySite(r) {
-  return { novideo: T`ไม่พบวิดีโอในลิงก์นี้`, signin: T`เว็บนี้ต้องล็อกอินจึงดูวิดีโอได้`, network: T`เชื่อมต่ออินเทอร์เน็ตไม่ได้`, badurl: T`ลิงก์ไม่ถูกต้อง` }[r] || T`เปิดวิดีโอจากเว็บนี้ไม่ได้`;
+  return { novideo: T`ไม่พบวิดีโอในลิงก์นี้`, signin: T`เว็บนี้ต้องล็อกอินจึงดูวิดีโอได้`, network: T`เชื่อมต่ออินเทอร์เน็ตไม่ได้`, badurl: T`ลิงก์ไม่ถูกต้อง`, noruntime: T`ไม่พบไฟล์ yt-dlp ในโฟลเดอร์ runtime — ติดตั้งแอปใหม่ (ซ่อมใน Prism Hub)` }[r] || T`เปิดวิดีโอจากเว็บนี้ไม่ได้`;
 }
 /** a video on another site: details + its subtitles (if any) with yt-dlp; the video is kept as a file to play,
  *  and when there are no English / Chinese subtitles AI makes them */
@@ -138,7 +138,7 @@ async function fetchCues(vid, tr) {
   return cues;
 }
 function whyYt(r) {
-  return { badurl: T`ลิงก์นี้ไม่ใช่คลิป YouTube`, network: T`เชื่อมต่ออินเทอร์เน็ตไม่ได้ — เปิดคลิป YouTube ต้องใช้เน็ต (บทที่เคยเปิดแล้ว ทบทวนได้ตลอด)`, unavailable: T`คลิปนี้ดูไม่ได้ (ส่วนตัว / ถูกลบ / จำกัดประเทศ)`, signin: T`คลิปนี้ต้องล็อกอิน YouTube จึงดูได้`, notrack: T`ไม่พบซับที่เลือก` }[r] || T`อ่านคลิปนี้ไม่สำเร็จ`;
+  return { badurl: T`ลิงก์นี้ไม่ใช่คลิป YouTube`, network: T`เชื่อมต่ออินเทอร์เน็ตไม่ได้ — เปิดคลิป YouTube ต้องใช้เน็ต (บทที่เคยเปิดแล้ว ทบทวนได้ตลอด)`, unavailable: T`คลิปนี้ดูไม่ได้ (ส่วนตัว / ถูกลบ / จำกัดประเทศ)`, signin: T`คลิปนี้ต้องล็อกอิน YouTube จึงดูได้`, notrack: T`ไม่พบซับที่เลือก`, busy: T`YouTube ให้โหลดซับถี่เกินไป — รอสักครู่แล้วลองใหม่`, noruntime: T`ไม่พบไฟล์ yt-dlp ในโฟลเดอร์ runtime — ติดตั้งแอปใหม่ (ซ่อมใน Prism Hub)` }[r] || T`อ่านคลิปนี้ไม่สำเร็จ`;
 }
 
 async function openWeb(url) {

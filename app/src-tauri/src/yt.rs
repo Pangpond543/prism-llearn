@@ -25,13 +25,29 @@ pub fn video_id(url: &str) -> Option<String> {
 
 fn ytdlp() -> std::process::Command {
     let mut c = util::hidden(&util::runtime().join("yt-dlp.exe"));
-    c.current_dir(util::runtime()).env("PYTHONIOENCODING", "utf-8").args(["--no-warnings", "--no-playlist", "--encoding", "utf-8"]);
+    // --socket-timeout: a stalled connection fails after 20 s instead of leaving the page waiting for ever
+    c.current_dir(util::runtime()).env("PYTHONIOENCODING", "utf-8").args(["--no-warnings", "--no-playlist", "--encoding", "utf-8", "--socket-timeout", "20"]);
     c
+}
+fn have_ytdlp() -> bool { util::runtime().join("yt-dlp.exe").is_file() }
+/// YouTube changes often and an old yt-dlp then fails on every video. On the first unexplained failure of a run,
+/// let yt-dlp update itself (free, from its GitHub releases) and try once more. → true if it changed.
+static UPDATED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+fn self_update() -> bool {
+    if UPDATED.swap(true, std::sync::atomic::Ordering::SeqCst) || std::env::var("PRISM_NOYTUPDATE").is_ok() { return false; }
+    let o = util::hidden(&util::runtime().join("yt-dlp.exe")).current_dir(util::runtime()).args(["-U", "--no-warnings", "--socket-timeout", "20"]).output();
+    let out = o.as_ref().map(|o| format!("{} {}", String::from_utf8_lossy(&o.stdout), String::from_utf8_lossy(&o.stderr))).unwrap_or_default();
+    let changed = out.contains("Updated yt-dlp to");
+    log(&format!("yt: self-update → {}", out.split_whitespace().collect::<Vec<_>>().join(" ").chars().take(200).collect::<String>()));
+    changed
 }
 fn meta(id: &str, fresh: bool) -> Result<Value, String> {
     if !fresh { if let Some(v) = lock(&META).as_ref().and_then(|m| m.get(id)).cloned() { return Ok(v); } }
+    if !have_ytdlp() { return Err("noruntime".into()); }
     let t0 = std::time::Instant::now();
-    let o = ytdlp().args(["-J", "--skip-download"]).arg(format!("https://www.youtube.com/watch?v={id}")).output().map_err(|e| e.to_string())?;
+    let run = || ytdlp().args(["-J", "--skip-download"]).arg(format!("https://www.youtube.com/watch?v={id}")).output().map_err(|e| e.to_string());
+    let mut o = run()?;
+    if !o.status.success() && generic_fail(&String::from_utf8_lossy(&o.stderr)) && self_update() { o = run()?; }
     if !o.status.success() {
         let err = String::from_utf8_lossy(&o.stderr).to_string();
         log(&format!("yt: -J failed {id}: {}", err.chars().take(300).collect::<String>()));
@@ -41,6 +57,11 @@ fn meta(id: &str, fresh: bool) -> Result<Value, String> {
     log(&format!("yt: meta {id} in {} ms", t0.elapsed().as_millis()));
     lock(&META).get_or_insert_with(HashMap::new).insert(id.to_string(), v.clone());
     Ok(v)
+}
+/// A failure that is not "private / login / no internet" — often an outdated yt-dlp.
+fn generic_fail(err: &str) -> bool {
+    !(err.contains("Private video") || err.contains("unavailable") || err.contains("Sign in") || err.contains("login") || err.contains("cookies")
+      || err.contains("resolve") || err.contains("getaddrinfo") || err.contains("timed out") || err.contains("network") || err.contains("Unsupported URL") || err.contains("No video") || err.contains("no video"))
 }
 fn learnable(code: &str) -> Option<&'static str> {
     let c = code.to_lowercase();
@@ -105,6 +126,7 @@ pub fn download(a: &Value, emit: impl Fn(Value) + Send + 'static) -> Value {
         "--progress-template", "download:@@%(progress._percent_str)s|%(progress.downloaded_bytes)s|%(progress.total_bytes,progress.total_bytes_estimate)s", "--print", "after_move:@@FILE %(filepath)s", "--ffmpeg-location"])
         .arg(util::runtime().join("ffmpeg.exe")).arg("-o").arg(&out).arg(site_url.clone().unwrap_or_else(|| format!("https://www.youtube.com/watch?v={id}")))
         .stdout(std::process::Stdio::piped()).stderr(std::process::Stdio::piped());
+    if !have_ytdlp() { return json!({ "ok": false, "reason": "noruntime" }); }
     let mut child = match c.spawn() { Ok(ch) => ch, Err(e) => return json!({ "ok": false, "reason": e.to_string() }) };
     util::kill_with_us(&child);
     lock(&JOBS).get_or_insert_with(HashMap::new).insert(id.clone(), child.id());
@@ -170,8 +192,11 @@ pub fn web(a: &Value) -> Value {
 pub fn site_info(a: &Value) -> Value {
     let url = a["url"].as_str().unwrap_or("").trim().to_string();
     if !url.starts_with("http") { return json!({ "ok": false, "reason": "badurl" }); }
+    if !have_ytdlp() { return json!({ "ok": false, "reason": "noruntime" }); }
     let t0 = std::time::Instant::now();
-    let o = match ytdlp().args(["-J", "--skip-download"]).arg(&url).output() { Ok(o) => o, Err(e) => return json!({ "ok": false, "reason": e.to_string() }) };
+    let run = || ytdlp().args(["-J", "--skip-download"]).arg(&url).output();
+    let mut o = match run() { Ok(o) => o, Err(e) => return json!({ "ok": false, "reason": e.to_string() }) };
+    if !o.status.success() && generic_fail(&String::from_utf8_lossy(&o.stderr)) && self_update() { if let Ok(o2) = run() { o = o2; } }
     if !o.status.success() {
         let err = String::from_utf8_lossy(&o.stderr).to_string();
         log(&format!("site: -J failed {url}: {}", err.chars().take(300).collect::<String>()));

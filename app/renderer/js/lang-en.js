@@ -1,5 +1,11 @@
 // English for every Thai string on the page (Thai is the source text). %USERPROFILE%\PrismLLearnBuild\test\extract.mjs lists what is missing.
 export const EN = {
+  "ที่ในดิสก์ไม่พอ — ต้องว่างอย่างน้อย 3 GB": "Not enough disk space — at least 3 GB must be free",
+  "โหลดไม่สำเร็จ — ตรวจอินเทอร์เน็ตแล้วกดโหลดต่อ": "Download stopped — check the internet, then press resume",
+  "ไม่พบไฟล์ yt-dlp ในโฟลเดอร์ runtime — ติดตั้งแอปใหม่ (ซ่อมใน Prism Hub)": "yt-dlp is missing from the runtime folder — reinstall the app (Repair in Prism Hub)",
+  "YouTube ให้โหลดซับถี่เกินไป — รอสักครู่แล้วลองใหม่": "YouTube is limiting subtitle downloads — wait a moment and try again",
+  "อ่านข้อมูลที่บันทึกไว้ไม่ได้ — เริ่มใหม่ (ไฟล์เดิมเก็บไว้เป็น state.broken.json)": "Couldn't read your saved data — starting fresh (the old file is kept as state.broken.json)",
+  "บันทึกข้อมูลไม่สำเร็จ — ดิสก์อาจเต็ม": "Couldn't save your data — the disk may be full",
   "ซับในไฟล์": "Subtitles in the file",
   "มีเวอร์ชันใหม่ v{}": "New version v{}",
   "(ตอนนี้ v{})": "(you have v{})",

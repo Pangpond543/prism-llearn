@@ -1,5 +1,23 @@
 # Prism LLearn — changelog
 
+- 2026-11-27 — **bug hunt (fixes for 1.1.1)** — same pass Rec/Code/VoiceOpen got on 11-20. Found and fixed:
+  (1) **Data loss**: `write_safe` copied the CURRENT file to `.bak` before every save — a damaged `state.json` (full disk / power cut)
+  overwrote the good `.bak` on the next autosave; and when both were bad the page started empty and saved over everything. Now a
+  `.json` becomes the `.bak` only if it still parses; `util::read_json_or_bak` (db_load + src_load) falls back to the .bak and keeps
+  the damaged file once as `state.broken.json`; the page treats a non-object as damaged. (2) **Translator download**: curl had no
+  `--fail` → an HTTP error page was written into the `.part`, and `-C -` then resumed after it → a corrupt 2.5 GB "model" accepted at
+  99.9 % size → translator fails for ever. Now `--fail`, `--proto-redir =https`, stall limit (<1 KB/s for 60 s), exact size + "GGUF"
+  magic before the rename, a complete `.part` is finished without curl (416), a too-big `.part` is restarted, free space checked first
+  (reason `disk`, curl exit 23 = disk) with its own messages on Home. (3) **yt-dlp**: `--socket-timeout 20` (a stalled connection hung
+  the "reading video" spinner for ever); missing `yt-dlp.exe` → reason `noruntime` (was an OS error text → generic message); an
+  unexplained `-J` failure runs `yt-dlp -U` once per run and retries (YouTube breaks old yt-dlp every few weeks; `PRISM_NOYTUPDATE=1`
+  turns it off for tests). Bundled yt-dlp updated 2026.10.26 → 2026.11.23. (4) A failing save toasted every 5 s → once per problem.
+  Tested with `llrun.sh` (own AppData): truncated state.json + good .bak → 1 card / 2 lessons back, .bak untouched, broken copy kept;
+  runtime without yt-dlp → the new message; a complete sparse `.part` starting "GGUF" → "model downloaded"; real YouTube link → meta in
+  4.8 s; `yt-dlp -U` on a copy printed "Updated yt-dlp to stable@2026.11.23" (the text the code looks for).
+  Not tested: a real full disk, an HTTP error mid-download, the self-update inside the app on a real outdated failure.
+  `llama_share.rs` unchanged. Release: `bash tools/release/prism-release.sh llearn 1.1.1`.
+
 - 2026-11-26 — **v1.1.0, first GitHub release** (`Pangpond543/prism-llearn`). The translator model (2.5 GB) is over GitHub's 2 GB per-file limit, so it is not in the download: Home → "แปลภาษาในเครื่อง" shows **"โหลดตัวแปล (2.5 GB ฟรี)"** → `tr::download` (curl from Hugging Face, resumable `.part`, progress refreshed every second, toast when done; same file / URL as Prism Shot). Everything else ships (Setup 1.23 GB / Portable 1.32 GB, `tools/stage-runtime.sh` + `../tools/release/tauri-release.sh`). `app/prism.config.json` repo set (updater on). Checked in the packaged exe: the button appears without the model, the download starts (296 MB in ~30 s), closing the app stops curl.
 
 ## 2026-11-25 — link with Prism Shot

@@ -36,31 +36,51 @@ const MODEL_SIZE: f64 = 2_489_909_312.0;
 pub fn download() -> Value {
     if model().is_some() { return json!({ "ok": true, "have": true }); }
     if lock(&DL).as_ref().map_or(false, |v| v.get("error").is_none()) { return json!({ "ok": true, "already": true }); }
-    *lock(&DL) = Some(json!({ "f": 0.0 }));
-    std::thread::spawn(|| {
-        let dir = util::runtime().join("models");
-        let _ = std::fs::create_dir_all(&dir);
-        let part = dir.join(format!("{MODEL_FILE}.part"));
+    let dir = util::runtime().join("models");
+    let _ = std::fs::create_dir_all(&dir);
+    let part = dir.join(format!("{MODEL_FILE}.part"));
+    let have = std::fs::metadata(&part).map(|m| m.len()).unwrap_or(0);
+    // a full disk would stop curl half-way with a "network" error: check first (+200 MB to spare)
+    let need = (MODEL_SIZE as u64).saturating_sub(have) + 200_000_000;
+    let free = util::free_space(&dir);
+    if free > 0 && free < need {
+        log(&format!("tr: not enough disk space ({free} free, {need} needed)"));
+        *lock(&DL) = Some(json!({ "error": "disk", "f": have as f64 / MODEL_SIZE, "need": need }));
+        return json!({ "ok": false, "reason": "disk" });
+    }
+    *lock(&DL) = Some(json!({ "f": have as f64 / MODEL_SIZE }));
+    std::thread::spawn(move || {
         let fin = dir.join(MODEL_FILE);
+        let finish = |len: u64| -> bool {
+            // exactly the right size and a real GGUF file — never keep an error page or a doubled file as the model
+            if len != MODEL_SIZE as u64 { return false; }
+            let mut head = [0u8; 4];
+            let real = std::fs::File::open(&part).and_then(|mut f| std::io::Read::read_exact(&mut f, &mut head)).is_ok() && &head == b"GGUF";
+            if !real { log("tr: downloaded file is not a GGUF model — removed"); let _ = std::fs::remove_file(&part); return false; }
+            match std::fs::rename(&part, &fin) {
+                Ok(_) => { *lock(&DL) = None; *lock(&STATE) = "off"; log("tr: model downloaded"); true }
+                Err(e) => { log(&format!("tr: rename failed: {e}")); *lock(&DL) = Some(json!({ "error": "disk" })); true }
+            }
+        };
+        // a .part that is already complete (the app closed during the last second) — curl -C would answer 416
+        if finish(have) { return; }
+        if have > MODEL_SIZE as u64 { let _ = std::fs::remove_file(&part); } // broken: start again
         let curl = std::path::PathBuf::from(std::env::var("SystemRoot").unwrap_or_else(|_| "C:\\Windows".into())).join("System32").join("curl.exe");
         let mut c = util::hidden(&curl);
-        // -C - resumes a half-finished download (closed app, lost Wi-Fi)
-        c.args(["-sL", "--proto", "=https", "-C", "-", "--retry", "3", "-o"]).arg(&part).arg(MODEL_URL);
+        // -C - resumes a half-finished download (closed app, lost Wi-Fi); --fail = an HTTP error page is never written into the model
+        c.args(["-sL", "--fail", "--proto", "=https", "--proto-redir", "=https", "--speed-limit", "1024", "--speed-time", "60", "-C", "-", "--retry", "3", "-o"]).arg(&part).arg(MODEL_URL);
         let mut child = match c.spawn() { Ok(ch) => ch, Err(e) => { log(&format!("tr: download spawn failed: {e}")); *lock(&DL) = Some(json!({ "error": "spawn" })); return; } };
         util::kill_with_us(&child);
         log("tr: model download started");
         loop {
             if let Ok(Some(st)) = child.try_wait() {
                 let len = std::fs::metadata(&part).map(|m| m.len()).unwrap_or(0);
-                if st.success() && len as f64 >= MODEL_SIZE * 0.999 {
-                    match std::fs::rename(&part, &fin) {
-                        Ok(_) => { *lock(&DL) = None; *lock(&STATE) = "off"; log("tr: model downloaded"); }
-                        Err(e) => { log(&format!("tr: rename failed: {e}")); *lock(&DL) = Some(json!({ "error": "disk" })); }
-                    }
-                } else {
-                    log(&format!("tr: download stopped ({st}) at {len} bytes"));
-                    *lock(&DL) = Some(json!({ "error": "network", "f": len as f64 / MODEL_SIZE }));
-                }
+                if finish(len) { return; }
+                // curl exit 23 = could not write (disk full); 22 = HTTP error; others = network
+                let free = util::free_space(&dir);
+                let why = if st.code() == Some(23) || (free > 0 && free < 50_000_000) { "disk" } else { "network" };
+                log(&format!("tr: download stopped ({st}) at {len} bytes → {why}"));
+                *lock(&DL) = Some(json!({ "error": why, "f": len as f64 / MODEL_SIZE }));
                 return;
             }
             let f = std::fs::metadata(&part).map(|m| m.len() as f64 / MODEL_SIZE).unwrap_or(0.0);

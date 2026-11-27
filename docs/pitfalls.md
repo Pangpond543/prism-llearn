@@ -56,3 +56,13 @@
   the user's screen — prefer llrun.sh. `LL_LOCAL=<dir>` shares LOCALAPPDATA with Prism Shot's test env (shared-translator test).
 
 - **GitHub Releases refuse files over 2 GB** → the translator GGUF (2.5 GB) is never in the release; `tools/stage-runtime.sh` drops `models/*.gguf` and the app downloads it (`tr::download`). Keep each release file under 2 GB (now ~1.3 GB).
+
+## Bug hunt 2026-11-27
+- **Never copy the current file to .bak blindly** before a save: if it is damaged, the good backup is gone after one autosave.
+  `util::write_safe` only keeps a `.json` as .bak when it parses; loads go through `util::read_json_or_bak`.
+- **curl downloads need `--fail`**, or a 4xx/5xx page is saved as the file — with `-C -` resume it becomes the first bytes of a
+  "model". Check exact size + magic (`GGUF`) before accepting a model. (Prism Shot downloads the same model — check its code too.)
+- **yt-dlp goes stale**: YouTube changes break old versions within weeks. `yt.rs` runs `yt-dlp -U` once per run on an unexplained
+  failure; a successful update prints "Updated yt-dlp to …". Tests: `PRISM_NOYTUPDATE=1` so a test never changes the user's runtime.
+- yt-dlp without `--socket-timeout` can wait for ever on a stalled connection (the page spinner never ends).
+- `llrun.sh` needs `app/bin-test/` (exe + WebView2Loader.dll copied from app/bin) — it is NOT in .gitignore: delete it after tests.

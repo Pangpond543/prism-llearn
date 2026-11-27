@@ -12,7 +12,7 @@ More detail: `docs/features.md`, `docs/pitfalls.md`, `docs/changelog.md`, `docs/
 
 ## What the user opens
 Desktop `Prism LLearn.lnk` → `prism-llearn\app\bin\prism-llearn.exe`, with `app\bin\runtime\` beside it (~4 GB, not in git):
-- `yt-dlp.exe` (2026.10.26), `ffmpeg.exe` (copied from Prism Rec; merge downloads, mkv subtitles, remux)
+- `yt-dlp.exe` (2026.11.23; updates itself with `-U` after an unexplained failure — `PRISM_NOYTUPDATE=1` in tests), `ffmpeg.exe` (copied from Prism Rec; merge downloads, mkv subtitles, remux)
 - `llama\` llama.cpp b12651 Vulkan build (llama-server + ggml/llama dlls) + `models\translategemma-4b-it-Q4_K_M.gguf` (2.5 GB, bullerwins GGUF, Gemma terms)
 - `tts\` sherpa-onnx v2.0.3 C API (`sherpa-onnx-c-api.dll`, `onnxruntime*.dll`) + `kokoro\` (kokoro-multi-lang-v1_1, en + zh)
 - `dict\en.json` (31 MB), `zh.json` (13 MB), `LICENSES.txt` — built by `tools/dict/build.py` (see below)

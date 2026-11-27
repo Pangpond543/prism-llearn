@@ -157,7 +157,7 @@ function renderRecent() {
 export async function renderStatus() {
   const box = $('status');
   const tr = native ? await api.invoke('tr:state') : { state: 'browser' };
-  const trTxt = { ready: T`พร้อม${tr.gpu === false ? ' (CPU)' : T(' (การ์ดจอ)')}`, loading: T`กำลังโหลดโมเดล…`, off: T`พร้อม (เปิดเมื่อใช้)`, fail: T`ใช้ไม่ได้`, nomodel: T`ยังไม่มีตัวแปล`, downloading: T`กำลังโหลด ${Math.round((tr.f || 0) * 100)}%`, dlfail: T`โหลดไม่สำเร็จ`, browser: '—' }[tr.state] || tr.state;
+  const trTxt = { ready: T`พร้อม${tr.gpu === false ? ' (CPU)' : T(' (การ์ดจอ)')}`, loading: T`กำลังโหลดโมเดล…`, off: T`พร้อม (เปิดเมื่อใช้)`, fail: T`ใช้ไม่ได้`, nomodel: T`ยังไม่มีตัวแปล`, downloading: T`กำลังโหลด ${Math.round((tr.f || 0) * 100)}%`, dlfail: tr.error === 'disk' ? T`ที่ในดิสก์ไม่พอ — ต้องว่างอย่างน้อย 3 GB` : T`โหลดไม่สำเร็จ — ตรวจอินเทอร์เน็ตแล้วกดโหลดต่อ`, browser: '—' }[tr.state] || tr.state;
   const trBtn = tr.state === 'nomodel' || tr.state === 'dlfail' ? `<button class="pill-btn small primary" id="set-trdl" title="${T`โหลดครั้งเดียวจาก Hugging Face (ฟรี) แล้วแปลได้ในเครื่องตลอดไป`}">${icon('download')}<span>${tr.f > 0.01 ? T`โหลดต่อ (2.5 GB)` : T`โหลดตัวแปล (2.5 GB ฟรี)`}</span></button>` : '';
   const as = native ? await api.invoke('asr:state') : { installed: false };
   const ai = !as.installed ? { cls: 'nomodel', txt: T`ไม่พบตัวฟังเสียง` } : !as.best && !as.fast ? { cls: 'nomodel', txt: T`ไม่พบโมเดล` } : { cls: 'ready', txt: as.device === 'cpu' ? T`พร้อม (CPU)` : T`พร้อม (การ์ดจอ)` };
@@ -177,7 +177,7 @@ export async function renderStatus() {
     <div class="set-row"><span>${icon('wave')}${T`อ่านออกเสียงเมื่อคลิกคำ`}</span><input type="checkbox" id="set-autosay" ${S.set.autoSay !== false ? 'checked' : ''}></div>
     <div class="set-row"><span>${icon('target')}${T`วัดระดับคำศัพท์`}</span><button class="pill-btn small" data-place="en">${T`อังกฤษ`}</button><button class="pill-btn small" data-place="zh">${T`จีน`}</button></div>`;
   const dl = $('set-trdl');
-  if (dl) dl.onclick = async () => { dl.disabled = true; await api.invoke('tr:download'); renderStatus(); };
+  if (dl) dl.onclick = async () => { dl.disabled = true; const r = await api.invoke('tr:download'); if (r && r.reason === 'disk') toast(T`ที่ในดิสก์ไม่พอ — ต้องว่างอย่างน้อย 3 GB`, { kind: 'err' }); renderStatus(); };
   // while the translator downloads, refresh this card every second (stops by itself when done)
   clearTimeout(renderStatus.t);
   if (tr.state === 'downloading') renderStatus.t = setTimeout(() => { if ($('status')) renderStatus(); }, 1000);

@@ -105,12 +105,8 @@ fn reveal(a: String) { let p = PathBuf::from(&a); if p.exists() { let _ = std::p
 // translations). Written through a temp file with a .bak of the last good copy.
 #[tauri::command(async)]
 fn db_load() -> String {
-    let p = util::data_dir().join("state.json");
-    match std::fs::read_to_string(&p) {
-        Ok(s) if serde_json::from_str::<Value>(&s).is_ok() => s,
-        Ok(_) => { log("state.json broken — using state.bak"); std::fs::read_to_string(p.with_extension("bak")).unwrap_or_default() }
-        Err(_) => String::new(),
-    }
+    // broken state.json (full disk, power cut) → state.bak; the broken copy is kept as state.broken.json
+    util::read_json_or_bak(&util::data_dir().join("state.json")).unwrap_or_default()
 }
 #[tauri::command(async)]
 fn db_save(a: String) -> bool { util::write_safe(&util::data_dir().join("state.json"), a.as_bytes()) }
@@ -124,7 +120,7 @@ fn src_path(id: &str) -> Option<PathBuf> {
 #[tauri::command(async)]
 fn src_save(a: Value) -> bool { src_path(a["id"].as_str().unwrap_or("")).map_or(false, |p| util::write_safe(&p, a["data"].as_str().unwrap_or("").as_bytes())) }
 #[tauri::command(async)]
-fn src_load(a: String) -> String { src_path(&a).and_then(|p| std::fs::read_to_string(p).ok()).unwrap_or_default() }
+fn src_load(a: String) -> String { src_path(&a).and_then(|p| util::read_json_or_bak(&p)).unwrap_or_default() }
 #[tauri::command(async)]
 fn src_del(a: Value) -> bool {
     // a video kept for offline goes to the Recycle Bin-free delete only when it lives in our Videos folder
